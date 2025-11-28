@@ -82,6 +82,18 @@ async function fetchAllPages(url, onPageFetched) {
 }
 
 // ─────────────────────────────
+// 문자열 해시(SHA-256, hex 문자열)
+// ─────────────────────────────
+async function hashString(str) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str || "");
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return hashHex;
+}
+
+// ─────────────────────────────
 // 사용자 정보 입력 검증
 // ─────────────────────────────
 function validateUserInfo() {
@@ -142,7 +154,6 @@ async function runExport(userInfo) {
 
   for (const course of courses) {
     const courseId = course.id;
-    const courseName = course.name;
 
     const assignments = await fetchAllPages(
       `${BASE}/api/v1/courses/${courseId}/assignments?per_page=100`
@@ -178,8 +189,11 @@ async function runExport(userInfo) {
   for (const courseId in assignmentsByCourse) {
     const { course, assignments } = assignmentsByCourse[courseId];
     const cId = course.id;
-    const cName = course.name;
+    const cName = course.name || "";
     const termName = course.term ? course.term.name : null;
+
+    // 과목명은 해시로만 저장
+    const courseNameHashed = await hashString(cName);
 
     for (const a of assignments) {
       let submission = null;
@@ -192,9 +206,9 @@ async function runExport(userInfo) {
       }
 
       result.push({
-        // 과목 정보
+        // 과목 정보 (이름은 해시만)
         course_id: cId,
-        course_name: cName,
+        course_name_hashed: courseNameHashed,
         term_name: termName,
         course_start_at: course.start_at,
         course_end_at: course.end_at,
