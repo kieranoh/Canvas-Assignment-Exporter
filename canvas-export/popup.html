@@ -38,11 +38,57 @@
         font-size: 12px;
         color: #555;
       }
+      label {
+        font-size: 13px;
+      }
+      input,
+      select {
+        margin-top: 2px;
+      }
     </style>
   </head>
   <body>
+    <!-- 사용자 정보 입력 -->
+    <div style="margin-bottom: 12px;">
+      <label>나이 (20~30):
+        <br />
+        <input
+          id="age"
+          type="number"
+          min="20"
+          max="30"
+          style="width: 100%;"
+          required
+        />
+      </label>
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <label>성별:
+        <br />
+        <select id="gender" style="width: 100%;">
+          <option value="">선택하세요</option>
+          <option value="남">남</option>
+          <option value="여">여</option>
+        </select>
+      </label>
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <label>장애 여부:
+        <br />
+        <select id="disabled" style="width: 100%;">
+          <option value="">선택하세요</option>
+          <option value="예">예</option>
+          <option value="아니요">아니요</option>
+        </select>
+      </label>
+    </div>
+
+    <!-- 실행 버튼 -->
     <button id="export">Export Assignments + Submissions</button>
 
+    <!-- 상태 / 진행바 / ETA -->
     <div id="status">대기 중...</div>
 
     <div class="progress-container">
