@@ -1,11 +1,15 @@
 const BASE = "https://canvas.skku.edu";
 const PREFIX_REGEX = /^while\s*\(1\);\s*/;
 
+// DOM elements
 const statusEl = document.getElementById("status");
 const etaEl = document.getElementById("eta");
 const progressBarEl = document.getElementById("progress-bar");
 const exportBtn = document.getElementById("export");
 
+// ─────────────────────────────
+// UI 업데이트 헬퍼
+// ─────────────────────────────
 function setStatus(text) {
   statusEl.textContent = text;
 }
@@ -38,6 +42,9 @@ function setEta(startTime, done, total) {
   etaEl.textContent = `예상 남은 시간: ${min}분 ${sec}초 정도`;
 }
 
+// ─────────────────────────────
+// Canvas API 헬퍼
+// ─────────────────────────────
 async function fetchCanvasPage(url) {
   const res = await fetch(url, { credentials: "include" });
   let text = await res.text();
@@ -74,13 +81,47 @@ async function fetchAllPages(url, onPageFetched) {
   return all;
 }
 
-async function runExport() {
+// ─────────────────────────────
+// 사용자 정보 입력 검증
+// ─────────────────────────────
+function validateUserInfo() {
+  const ageStr = document.getElementById("age").value;
+  const gender = document.getElementById("gender").value;
+  const disabled = document.getElementById("disabled").value;
+
+  if (!ageStr || isNaN(ageStr)) {
+    alert("나이를 숫자로 입력해주세요.");
+    return null;
+  }
+  const age = Number(ageStr);
+  if (age < 20 || age > 30) {
+    alert("나이는 20~30 사이만 입력 가능합니다.");
+    return null;
+  }
+
+  if (gender !== "남" && gender !== "여") {
+    alert("성별을 선택해주세요.");
+    return null;
+  }
+
+  if (disabled !== "예" && disabled !== "아니요") {
+    alert("장애 여부를 선택해주세요.");
+    return null;
+  }
+
+  return { age, gender, disabled };
+}
+
+// ─────────────────────────────
+// 메인 Export 로직
+// ─────────────────────────────
+async function runExport(userInfo) {
   exportBtn.disabled = true;
   setStatus("과목 목록 가져오는 중...");
   etaEl.textContent = "";
   progressBarEl.style.width = "0%";
 
-  // 1) 모든 과목 가져오기 (즐겨찾기 상관 없이, 과거 포함)
+  // 1) 모든 과목 (즐겨찾기 상관 없이, 과거 포함)
   const courses = await fetchAllPages(
     `${BASE}/api/v1/users/self/courses?per_page=100&enrollment_state=all`
   );
@@ -92,7 +133,7 @@ async function runExport() {
     return;
   }
 
-  // 2) 과목별로 assignments 목록 먼저 다 모으기
+  // 2) 과목별 assignments 목록 수집 (1단계 진행바 + ETA)
   setStatus(`과목 ${totalCourses}개에서 과제 목록 수집 중...`);
   etaEl.textContent = "";
   let courseDone = 0;
@@ -126,9 +167,9 @@ async function runExport() {
     return;
   }
 
-  // 3) 모든 assignment에 대해 submissions/self 가져오기 (2단계 진행바 + ETA)
+  // 3) 모든 assignment에 대해 submissions/self 수집 (2단계 진행바 + ETA)
   setStatus(
-    `총 ${totalAssignments}개 과제에 대한 제출 정보 수집 중... (시간이 좀 걸릴 수 있습니다)`
+    `총 ${totalAssignments}개 과제에 대한 제출 정보 수집 중... (시간이 걸릴 수 있습니다)`
   );
   const result = [];
   let assignmentDone = 0;
@@ -151,12 +192,14 @@ async function runExport() {
       }
 
       result.push({
+        // 과목 정보
         course_id: cId,
         course_name: cName,
         term_name: termName,
         course_start_at: course.start_at,
         course_end_at: course.end_at,
 
+        // 과제 메타데이터
         assignment_id: a.id,
         assignment_name: a.name,
         assignment_description: a.description,
@@ -172,6 +215,7 @@ async function runExport() {
         grading_type: a.grading_type,
         has_submitted_submissions: a.has_submitted_submissions,
 
+        // 제출 정보
         submitted_at: submission ? submission.submitted_at : null,
         submission_type: submission ? submission.submission_type : null,
         submission_score: submission ? submission.score : null,
@@ -189,13 +233,19 @@ async function runExport() {
     }
   }
 
-  // 4) JSON 다운로드
+  // 4) 최종 JSON 구조 만들기 (사용자 정보 포함)
   setStatus(
     `총 ${result.length}개 레코드 수집 완료. JSON 파일을 생성하는 중입니다...`
   );
   etaEl.textContent = "";
 
-  const blob = new Blob([JSON.stringify(result, null, 2)], {
+  const finalData = {
+    user_info: userInfo, // 나이 / 성별 / 장애 여부
+    exported_at: new Date().toISOString(),
+    assignments: result
+  };
+
+  const blob = new Blob([JSON.stringify(finalData, null, 2)], {
     type: "application/json"
   });
   const url = URL.createObjectURL(blob);
@@ -211,8 +261,14 @@ async function runExport() {
   exportBtn.disabled = false;
 }
 
+// ─────────────────────────────
+// 버튼 클릭 핸들러
+// ─────────────────────────────
 exportBtn.addEventListener("click", () => {
-  runExport().catch((err) => {
+  const userInfo = validateUserInfo();
+  if (!userInfo) return;
+
+  runExport(userInfo).catch((err) => {
     console.error(err);
     setStatus("오류가 발생했습니다. 콘솔을 확인하세요.");
     etaEl.textContent = "";
