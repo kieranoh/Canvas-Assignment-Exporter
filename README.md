@@ -8,7 +8,7 @@
 3. Chrome 주소창 → chrome://extensions
 4. 오른쪽 상단 “개발자 모드” 활성화
 5. “압축 해제된 확장 프로그램 로드” 클릭
-6. 압축 해제된 폴더 선택
+6. 압축 해제된 폴더(canvas-export) 선택
 
 ## 사용 방법
 1. canvas.skku.edu에 로그인
