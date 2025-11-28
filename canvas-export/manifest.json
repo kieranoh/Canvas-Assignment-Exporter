@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Canvas Assignment Exporter",
+  "version": "0.2",
+  "description": "Export all Canvas assignments and submissions with progress and ETA.",
+  "permissions": [],
+  "host_permissions": ["https://canvas.skku.edu/*"],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
